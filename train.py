@@ -21,11 +21,12 @@ parser.add_argument('--train_path', metavar='DIR',
                     help='path to training data csv', default='data/ag_news_csv/train.csv')
 parser.add_argument('--val_path', metavar='DIR',
                     help='path to validation data csv', default='data/ag_news_csv/test.csv')
+parser.add_argument('--target_sub_scaler', type=int, default=1, help='Set to 0 for zero-indexed targets')
 # learning
 learn = parser.add_argument_group('Learning options')
 learn.add_argument('--lr', type=float, default=0.0001, help='initial learning rate [default: 0.0001]')
 learn.add_argument('--epochs', type=int, default=200, help='number of epochs for train [default: 200]')
-learn.add_argument('--batch_size', type=int, default=32, help='batch size for training [default: 64]')
+learn.add_argument('--batch_size', type=int, default=32, help='batch size for training [default: 32]')
 learn.add_argument('--max_norm', default=400, type=int, help='Norm cutoff to prevent explosion of gradients')
 learn.add_argument('--optimizer', default='Adam', help='Type of optimizer. SGD|Adam|ASGD are supported [default: Adam]')
 learn.add_argument('--class_weight', default=None, action='store_true', help='Weights should be a 1D Tensor assigning weight to each of the classes.')
@@ -40,6 +41,7 @@ cnn.add_argument('--shuffle', action='store_true', default=False, help='shuffle 
 cnn.add_argument('--dropout', type=float, default=0.5, help='the probability for dropout [default: 0.5]')
 cnn.add_argument('-kernel_num', type=int, default=100, help='number of each kind of kernel')
 cnn.add_argument('-kernel_sizes', type=str, default='3,4,5', help='comma-separated kernel size to use for convolution')
+cnn.add_argument('--output_size', type=int, default=4)
 # device
 device = parser.add_argument_group('Device options')
 device.add_argument('--num_workers', default=1, type=int, help='Number of workers used in data-loading')
@@ -59,7 +61,6 @@ experiment.add_argument('--save_interval', type=int, default=1, help='how many e
 
 
 def train(train_loader, dev_loader, model, args):
-  
 
     # optimization scheme
     if args.optimizer=='Adam':
@@ -68,7 +69,7 @@ def train(train_loader, dev_loader, model, args):
         optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=0.9)
     elif args.optimizer=='ASGD':
         optimizer = torch.optim.ASGD(model.parameters(), lr=args.lr)
-    
+
     # continue training from checkpoint model
     if args.continue_from:
         print("=> loading checkpoint from '{}'".format(args.continue_from))
@@ -105,16 +106,22 @@ def train(train_loader, dev_loader, model, args):
         if args.dynamic_lr and args.optimizer!='Adam':
             scheduler.step()
         for i_batch, data in enumerate(train_loader, start=start_iter):
-            inputs, target = data          
-            target.sub_(1)
-        
+            inputs, target = data
+
+            # scale target to be zero indexed
+            target.sub_(args.target_sub_scaler)
+
             if args.cuda:
                 inputs, target = inputs.cuda(), target.cuda()
 
             inputs = Variable(inputs)
             target = Variable(target)
             logit = model(inputs)
-            loss = F.nll_loss(logit, target)
+            try:
+                loss = F.nll_loss(logit, target)
+            except Exception as e:
+                print('error={} inputs={} target={} target_len={}'.format(e, inputs, target, len(target)))
+                raise
             optimizer.zero_grad()
             loss.backward()
             torch.nn.utils.clip_grad_norm(model.parameters(), args.max_norm)
@@ -128,7 +135,7 @@ def train(train_loader, dev_loader, model, args):
                 print(torch.cat((target.unsqueeze(1), torch.unsqueeze(torch.max(logit, 1)[1].view(target.size()).data, 1)), 1))
                 print('\nLogit')
                 print(logit)
-            
+
             if i_batch % args.log_interval == 0:
                 corrects = (torch.max(logit, 1)[1].view(target.size()).data == target.data).sum()
                 accuracy = 100.0 * corrects/args.batch_size
@@ -140,10 +147,10 @@ def train(train_loader, dev_loader, model, args):
                                                                              corrects,
                                                                              args.batch_size))
             if i_batch % args.val_interval == 0:
-  
                 val_loss, val_acc = eval(dev_loader, model, epoch, i_batch, optimizer, args)
 
             i_batch += 1
+
         if args.checkpoint and epoch % args.save_interval == 0:
             file_path = '%s/CharCNN_epoch_%d.pth.tar' % (args.save_folder, epoch)
             print("\r=> saving checkpoint model to %s" % file_path)
@@ -172,8 +179,10 @@ def eval(data_loader, model, epoch_train, batch_train, optimizer, args):
     predicates_all, target_all = [], []
     for i_batch, (data) in enumerate(data_loader):
         inputs, target = data
-        target.sub_(1)
-        
+
+        # scale target to be zero indexed
+        target.sub_(args.target_sub_scaler)
+
         size+=len(target)
         if args.cuda:
             inputs, target = inputs.cuda(), target.cuda()
@@ -188,7 +197,7 @@ def eval(data_loader, model, epoch_train, batch_train, optimizer, args):
         target_all+=target.data.cpu().numpy().tolist()
         if args.cuda:
             torch.cuda.synchronize()
-        
+
     avg_loss = accumulated_loss/size
     accuracy = 100.0 * corrects/size
     model.train()
@@ -236,7 +245,7 @@ def main():
 
     class_weight, num_class_train = train_dataset.get_class_weight()
     _, num_class_dev = dev_dataset.get_class_weight()
-    
+
     # when you have an unbalanced training set
     if args.class_weight!=None:
         args.class_weight = torch.FloatTensor(class_weight).sqrt_()
@@ -273,9 +282,8 @@ def main():
     # model
     model = CharCNN(args)
     print(model)
-    
-            
-    # train 
+
+    # train
     train(train_loader, dev_loader, model, args)
 
 if __name__ == '__main__':
