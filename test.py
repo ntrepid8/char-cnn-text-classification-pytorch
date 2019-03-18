@@ -72,7 +72,7 @@ if __name__ == '__main__':
         target = Variable(target)
         logit = model(inputs)
         predicates = torch.max(logit, 1)[1].view(target.size()).data
-        accumulated_loss += F.nll_loss(logit, target, size_average=False).data[0]
+        accumulated_loss += F.nll_loss(logit, target, size_average=False).item()
         corrects += (torch.max(logit, 1)[1].view(target.size()).data == target.data).sum()
         predicates_all+=predicates.cpu().numpy().tolist()
         target_all+=target.data.cpu().numpy().tolist()
