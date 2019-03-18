@@ -134,7 +134,7 @@ def train(train_loader, dev_loader, model, args):
                 accuracy = 100.0 * corrects/args.batch_size
                 print('Epoch[{}] Batch[{}] - loss: {:.6f}  lr: {:.5f}  acc: {:.3f}% ({}/{})'.format(epoch,
                                                                              i_batch,
-                                                                             loss.data[0],
+                                                                             loss.item(),
                                                                              optimizer.state_dict()['param_groups'][0]['lr'],
                                                                              accuracy,
                                                                              corrects,
