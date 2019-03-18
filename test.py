@@ -24,6 +24,7 @@ parser.add_argument('--test-path', metavar='DIR',
                     help='path to testing data csv', default='data/ag_news_csv/test.csv')
 parser.add_argument('--batch-size', type=int, default=20, help='batch size for training [default: 128]')
 parser.add_argument('--alphabet-path', default='alphabet.json', help='Contains all characters for prediction')
+parser.add_argument('--target_sub_scaler', type=int, default=1, help='Set to 0 for zero-indexed targets')
 # device
 parser.add_argument('--num-workers', default=4, type=int, help='Number of workers used in data-loading')
 parser.add_argument('--cuda', action='store_true', default=True, help='enable the gpu' )
@@ -63,7 +64,7 @@ if __name__ == '__main__':
     print('\nTesting...')
     for i_batch, (data) in enumerate(test_loader):
         inputs, target = data
-        target.sub_(1)
+        target.sub_(args.target_sub_scaler)
         size+=len(target)
         if args.cuda:
             inputs, target = inputs.cuda(), target.cuda()
