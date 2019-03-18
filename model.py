@@ -51,7 +51,7 @@ class  CharCNN(nn.Module):
         )
 
         # output size
-        output_size = args.output_size or 4
+        output_size = getattr(args, 'output_size', 4)
         self.fc3 = nn.Linear(1024, output_size)
         self.log_softmax = nn.LogSoftmax()
 
