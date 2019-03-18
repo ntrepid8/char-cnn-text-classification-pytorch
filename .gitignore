@@ -102,3 +102,6 @@ trees
 
 # pycharm
 .idea
+
+# models
+models_CharCNN/
