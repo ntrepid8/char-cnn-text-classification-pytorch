@@ -64,7 +64,8 @@ if __name__ == '__main__':
     print('\nTesting...')
     for i_batch, (data) in enumerate(test_loader):
         inputs, target = data
-        target.sub_(args.target_sub_scaler)
+        if args.target_sub_scaler != 0:
+            target.sub_(args.target_sub_scaler)
         size+=len(target)
         if args.cuda:
             inputs, target = inputs.cuda(), target.cuda()
@@ -77,7 +78,7 @@ if __name__ == '__main__':
         corrects += (torch.max(logit, 1)[1].view(target.size()).data == target.data).sum()
         predicates_all+=predicates.cpu().numpy().tolist()
         target_all+=target.data.cpu().numpy().tolist()
-        
+
     avg_loss = accumulated_loss/size
     accuracy = 100.0 * corrects/size
     print('\rEvaluation - loss: {:.6f}  acc: {:.3f}%({}/{}) '.format(avg_loss, 

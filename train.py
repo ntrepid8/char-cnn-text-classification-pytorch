@@ -109,7 +109,8 @@ def train(train_loader, dev_loader, model, args):
             inputs, target = data
 
             # scale target to be zero indexed
-            target.sub_(args.target_sub_scaler)
+            if args.target_sub_scaler != 0:
+                target.sub_(args.target_sub_scaler)
 
             if args.cuda:
                 inputs, target = inputs.cuda(), target.cuda()
@@ -181,7 +182,8 @@ def eval(data_loader, model, epoch_train, batch_train, optimizer, args):
         inputs, target = data
 
         # scale target to be zero indexed
-        target.sub_(args.target_sub_scaler)
+        if args.target_sub_scaler != 0:
+            target.sub_(args.target_sub_scaler)
 
         size+=len(target)
         if args.cuda:
