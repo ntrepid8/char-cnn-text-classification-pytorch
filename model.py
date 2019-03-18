@@ -15,8 +15,8 @@ class  CharCNN(nn.Module):
             nn.Conv1d(256, 256, kernel_size=7, stride=1),
             nn.ReLU(),
             nn.MaxPool1d(kernel_size=3, stride=3)
-        )            
-            
+        )
+
         self.conv3 = nn.Sequential(
             nn.Conv1d(256, 256, kernel_size=3, stride=1),
             nn.ReLU()
@@ -24,7 +24,7 @@ class  CharCNN(nn.Module):
 
         self.conv4 = nn.Sequential(
             nn.Conv1d(256, 256, kernel_size=3, stride=1),
-            nn.ReLU()    
+            nn.ReLU()
         )
         
         self.conv5 = nn.Sequential(
@@ -37,21 +37,22 @@ class  CharCNN(nn.Module):
             nn.ReLU(),
             nn.MaxPool1d(kernel_size=3, stride=3)
         )
-            
-        
+
         self.fc1 = nn.Sequential(
             nn.Linear(8704, 1024),
             nn.ReLU(),
             nn.Dropout(p=args.dropout)
         )
-        
+
         self.fc2 = nn.Sequential(
             nn.Linear(1024, 1024),
             nn.ReLU(),
             nn.Dropout(p=args.dropout)
         )
 
-        self.fc3 = nn.Linear(1024, 4)
+        # output size
+        output_size = args.output_size or 4
+        self.fc3 = nn.Linear(1024, output_size)
         self.log_softmax = nn.LogSoftmax()
 
     def forward(self, x):
@@ -72,5 +73,5 @@ class  CharCNN(nn.Module):
         x = self.fc3(x)
         # output layer
         x = self.log_softmax(x)
-        
+
         return x
